@@ -1,0 +1,9 @@
+void myExit();
+void menuReadDriveStatus();
+void menuEnumerateDrives();
+void menuShow();
+void menuInitializeDrive();
+void menuReadCMDGetPartition();
+void menuChangeCMDPartition();
+void menuDirectDiskCommand();
+void menuCMDPartitionDirectory();
