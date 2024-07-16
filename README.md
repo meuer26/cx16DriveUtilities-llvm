@@ -2,3 +2,5 @@
 Dan O'Malley
 
 LLVM verion of https://github.com/meuer26/cx16DriveUtilities
+
+Currently buggy, see Issues list
