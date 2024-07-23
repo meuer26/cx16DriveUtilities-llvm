@@ -1,49 +1,57 @@
-#include "constants.h"
-#include <cbm.h>
-#include <stdio.h>
-#include "screen.h"
+// Modified from https://github.com/llvm-mos/llvm-mos-sdk/blob/main/examples/cx16/k_cbm_file_test.c
 
-void printCommandChannel(unsigned char file, unsigned char device, unsigned char channel)
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <cbm.h> 
+#include <cx16.h> 
+#include "disk.h"
+
+extern char cbm_status[64];
+extern uint8_t cbm_error;
+
+// read device status channel, returns cbm_error and sets cbm_status
+uint8_t cbm_get_status(uint8_t lfn, uint8_t device, uint8_t channel) 
 {
-   unsigned char returnedByte;
-   
-    cbm_k_setlfs(file, device, channel); 
+    uint8_t len = 0;
+
+    cbm_k_setlfs(lfn, device, channel);
     cbm_k_setnam("");
     cbm_k_open();
-    cbm_k_chkin(file);
-
-    returnedByte = cbm_k_getin();
-
-    while (returnedByte != (unsigned char)0xd)
+    cbm_k_chkin(lfn);
+    
+    while (len < sizeof(cbm_status) && !cbm_k_readst()) 
     {
-        printf("%c", returnedByte);
-        returnedByte = cbm_k_getin();
+        uint8_t c = cbm_k_chrin();
+        if (c == '\r') 
+        {
+            break;
+        }
+        
+        cbm_status[len++] = c;
+    }
+  
+    cbm_status[len] = 0;
+    cbm_k_clrch();
+    cbm_k_close(lfn);
+    cbm_error = ((cbm_status[0] - '0') * 10) + (cbm_status[1] - '0');
+  
+    if (cbm_error < 20) // quash trivial errors
+    {
+        cbm_error = 0;
     }
 
+    return cbm_error;
 }
 
-unsigned char readDriveStatus(unsigned char file, unsigned char device, unsigned char channel)
-{    
-    cbm_k_setlfs(file, device, channel); 
-    cbm_k_setnam("");
-    cbm_k_open();
-    cbm_k_ckout(file);
-
-    return cbm_k_readst();
-}
-
-
-void sendDriveCommand(unsigned char file, unsigned char device, unsigned char channel, char * command)
+// send device command
+uint8_t cbm_device_cmd(uint8_t lfn, uint8_t device, uint8_t channel, const char *cmd) 
 {
-    cbm_k_setlfs(file, device, channel);
-    cbm_k_setnam(command);
+    cbm_k_setlfs(lfn, device, channel);
+    cbm_k_setnam(cmd);
     cbm_k_open();
-}
-
-
-void loadCommand(unsigned char file, unsigned char device, unsigned char channel, char * fileName)
-{
-    cbm_k_setlfs(file, device, channel); 
-    cbm_k_setnam(fileName);
-    cbm_k_load(0, (void *)0xc000);
+    cbm_k_close(lfn);
+    
+    return cbm_get_status(lfn, device, channel);
 }
